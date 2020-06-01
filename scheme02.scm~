@@ -1,0 +1,27 @@
+(define (round100 x) (/ (round (* x 100)) 100.0))
+
+(define (toUSD x from)
+  (if (equal? from 'euro) (* x 1.23510)
+      (if (equal? from 'ukpound) (* x 1.78250)
+          (if (equal? from 'yen) (* x 0.009321)
+              (if (equal? from 'usdollar) x 'error)))))
+
+(define (convert x from to)
+  (let ((d (toUSD x from)))
+    (if(equal? to 'usdollar) d
+       (if(equal? to 'ukpound) (* d 0.56101)
+          (if(equal? to 'euro) (* d 0.80965)
+             (if(equal? to 'yen) (* d 107.290) 'error))))))
+
+
+;(round100 (convert 3.50 'usdollar 'euro))
+
+;(round100 (convert 25.00 'yen 'ukpound))
+
+(define (s-tip x p) (* x (+ 1 (* p 0.01))))
+
+(define (tip x) (cons (s-tip x 15) (cons (s-tip x 20) '())))
+
+(tip 30)
+
+(de
