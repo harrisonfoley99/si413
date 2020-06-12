@@ -1,0 +1,85 @@
+/********************************************************
+ * ex1.ypp
+ ********************************************************/
+%{
+#include <iostream>
+#include <string>
+#include <map>
+#include <cstdio>
+#include <cstdlib>
+using namespace std;
+
+//-- Lexer prototype required by bison, aka getNextToken()
+//-- prototypes, global variables, etc go here
+void printsbin(int n);
+int yylex(); 
+int yyerror(const char *p) { cerr << "Parse error!" << endl; }
+bool done = false;
+map<string, int> T;
+%}
+
+//-- SYMBOL SEMANTIC VALUES -----------------------------
+//-- In bison, every symbol, whether it be token or non-terminal
+//-- can have a "semantic value".  A NUM token "4.35", has
+//-- semantic value 4.35.  A "term" symbol representing 
+//-- "-3.5*2*5" has semantic value 35.0, which you get by
+//-- evaluating -3.5*2*5.  An OPA symbol's semantic value
+//-- is '+' or '-' depending on which symbol we actually read.
+//-- Some tokens, like STOP or RP don't need a semantic value.
+//-- The %union statement lists the type-and-name for each
+//-- semantic value.  The %token and %type statements let you
+//-- you specify semantic value types for tokens and 
+//-- non-terminals.
+%union {
+  int val; 
+  char sym;
+  char *str;
+};
+%token <val> NUM
+%token <sym> OPA OPM LP RP STOP STOPB ASN
+%token <str> NAME
+%type  <val> exp term sfactor factor
+
+//-- GRAMMAR RULES ---------------------------------------
+%%
+S: stmt               { YYACCEPT; }
+|                     { done = true; }
+
+stmt: exp STOP        { cout << $1 << endl; }
+| NAME ASN exp STOP   { T[$1] = $3; } 
+| exp STOPB           { printsbin($1); cout << endl; }
+
+exp: exp OPA term     { $$ = ($2 == '+' ? $1 + $3 : $1 - $3); }
+| term                { $$ = $1; }
+
+term: term OPM factor { $$ = ($2 == '*' ? $1 * $3 : $1 / $3); }
+| sfactor             { $$ = $1; }
+
+sfactor: OPA factor   { $$ = ($1 == '+' ? $2 : -$2); }
+| factor              { $$ = $1; }
+
+factor: NUM           { $$ = $1; }
+| NAME                { if(T.find(string($1)) == T.end()) { 
+                      cout << "Error! Uninitialized variable: " << $1 << endl;
+                      exit(1); }
+                      ; $$ = T[$1]; }
+| LP exp RP           { $$ = $2; }
+
+%%
+//-- FUNCTION DEFINITIONS ---------------------------------
+int main()
+{
+  while(!done)
+    yyparse();
+  return 0;
+}
+void printsbin(int n)
+{
+  if (n < 0) { cout << "-"; n = -n; }
+  char res[33] = { '\0' };
+  int i;
+  for(i = 31; n != 0; --i, n /= 2)
+    res[i] = (n & 1 ? '1' : '0');
+  cout << (i == 31 ? "0" : res + i + 1);
+}
+

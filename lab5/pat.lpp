@@ -1,0 +1,25 @@
+/*** This is file: pat.lpp ***/
+%{
+#include "pat.h"
+#include <iostream>
+using namespace std;
+%}
+
+%option noyywrap
+
+%%
+[a-z][a-zA-Z0-9\^]*    { yylval = yytext; return ATOM; }
+"*"      { return FOLD; }
+[;]      { return STOP; }
+":"      { return COLON; }
+[A-Z][a-zA-Z0-9\^]*   { yylval = yytext; return NAME; }
+"_r"     { return POP; }
+"["      { return LB; }
+"]"      { return RB; }
+<<EOF>>  { return 0; }
+[ \t\n]+ { }
+.        { cerr << "Unrecognized token!" << endl; exit(1); }
+%%
+
+string yylval;
+

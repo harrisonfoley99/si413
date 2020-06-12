@@ -1,0 +1,35 @@
+%{
+#include "lab04.tab.hpp"
+#include <iostream>
+#include <cstring>
+using namespace std;
+// Input:  val - a string consisting of the form (0|1)+b , e.g. 1011b 
+// Output: the integer value equal to val (note: no error checking is done!)
+int binary2int(const string &val)
+{
+  int x = 0;
+  for(int i = 0; val[i] != 'b'; ++i)
+    x = 2*x + (val[i]-'0');
+  return x;
+}
+
+%}
+%option noyywrap
+
+%%
+
+[a-zA-Z_][a-zA-Z0-9_]* { yylval.str = strdup(yytext) ; return NAME; }
+":="     { return ASN; }
+"#".*"\n" {    }
+";b"     { return STOPB; }
+[0-1]+b  { yylval.val = binary2int(yytext); return NUM; }
+[0-9]+   { yylval.val = atoi(yytext); return NUM; }
+[\+\-]  { yylval.sym = yytext[0]; return OPA; }
+[\*/]   { yylval.sym = yytext[0]; return OPM; }
+"("      { return LP; }
+")"      { return RP; }
+";"      { return STOP; }
+<<EOF>>  { return 0; }
+[ \t\n]+ { }
+.        { cerr << "Unrecognized token!" << endl; exit(1); }
+%%
