@@ -1,0 +1,155 @@
+State 9 conflicts: 1 shift/reduce
+State 12 conflicts: 1 shift/reduce
+
+
+Grammar
+
+    0 $accept: s $end
+
+    1 s: s rule
+    2  | rule
+
+    3 rule: SYM ARROW rlist
+
+    4 rlist: rlist OR rhs
+    5      | rhs
+
+    6 rhs: rhs SYM
+    7    | SYM
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256)
+ARROW (258) 3
+OR (259) 4
+SYM (260) 3 6 7
+
+
+Nonterminals, with rules where they appear
+
+$accept (6)
+    on left: 0
+s (7)
+    on left: 1 2, on right: 0 1
+rule (8)
+    on left: 3, on right: 1 2
+rlist (9)
+    on left: 4 5, on right: 3 4
+rhs (10)
+    on left: 6 7, on right: 4 5 6
+
+
+State 0
+
+    0 $accept: . s $end
+
+    SYM  shift, and go to state 1
+
+    s     go to state 2
+    rule  go to state 3
+
+
+State 1
+
+    3 rule: SYM . ARROW rlist
+
+    ARROW  shift, and go to state 4
+
+
+State 2
+
+    0 $accept: s . $end
+    1 s: s . rule
+
+    $end  shift, and go to state 5
+    SYM   shift, and go to state 1
+
+    rule  go to state 6
+
+
+State 3
+
+    2 s: rule .
+
+    $default  reduce using rule 2 (s)
+
+
+State 4
+
+    3 rule: SYM ARROW . rlist
+
+    SYM  shift, and go to state 7
+
+    rlist  go to state 8
+    rhs    go to state 9
+
+
+State 5
+
+    0 $accept: s $end .
+
+    $default  accept
+
+
+State 6
+
+    1 s: s rule .
+
+    $default  reduce using rule 1 (s)
+
+
+State 7
+
+    7 rhs: SYM .
+
+    $default  reduce using rule 7 (rhs)
+
+
+State 8
+
+    3 rule: SYM ARROW rlist .
+    4 rlist: rlist . OR rhs
+
+    OR  shift, and go to state 10
+
+    $default  reduce using rule 3 (rule)
+
+
+State 9
+
+    5 rlist: rhs .
+    6 rhs: rhs . SYM
+
+    SYM  shift, and go to state 11
+
+    SYM       [reduce using rule 5 (rlist)]
+    $default  reduce using rule 5 (rlist)
+
+
+State 10
+
+    4 rlist: rlist OR . rhs
+
+    SYM  shift, and go to state 7
+
+    rhs  go to state 12
+
+
+State 11
+
+    6 rhs: rhs SYM .
+
+    $default  reduce using rule 6 (rhs)
+
+
+State 12
+
+    4 rlist: rlist OR rhs .
+    6 rhs: rhs . SYM
+
+    SYM  shift, and go to state 11
+
+    SYM       [reduce using rule 4 (rlist)]
+    $default  reduce using rule 4 (rlist)

@@ -1,0 +1,13 @@
+/* This file is ex1.ypp */
+
+%token ARROW OR SYM
+
+%%
+
+s: s rule | rule
+rule: SYM ARROW rlist
+rlist: rlist OR rhs | rhs
+rhs: rhs SYM | SYM
+
+%%
+
