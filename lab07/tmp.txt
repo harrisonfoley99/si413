@@ -1,0 +1,17 @@
+digraph G {
+8 [ label="seq" ];
+8 -> 5;
+8 -> 6;
+5 [ label="seq" ];
+5 -> 1;
+5 -> 3;
+1 [ label="seq" ];
+1 -> 0;
+0 [ label="a" ];
+3 [ label="seq" ];
+3 -> 2;
+2 [ label="b" ];
+6 [ label="seq" ];
+6 -> 4;
+4 [ label="c" ];
+}

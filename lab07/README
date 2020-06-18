@@ -1,0 +1,7 @@
+This directory contains the files neccessary to create
+the "pat" interpreter that reads a pat-language statement
+and displays a parse tree for the statement.
+
+To make the pat program, simply execute "make".
+To run the program, execute "./pat".
+Good luck.

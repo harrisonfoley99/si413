@@ -1,0 +1,50 @@
+%{
+#include "pat.h" // LOOK HERE FOR USEFUL HELPER FUNCTIOS!!!
+#include <map>
+#include <cstdlib>
+#include <cstdio>
+int yyerror(const char *p) { cerr << "Parse error!" << endl; }
+bool done = false;
+map<string, vector<string>*> T;
+using namespace std;
+%}
+
+%code requires {
+#include "pat.h"
+// This says that semantic values of tokens should be pointers to string vectors
+#define YYSTYPE vector<string>*
+ }
+
+%error-verbose
+%nonassoc LB RB STOP ATOM
+%left FOLD
+%left CONCAT NAME
+%left POP
+%left COLON
+%%
+
+S: seq STOP { cout << $1 << endl; YYACCEPT; }
+|           { done = true; }
+
+seq:  seq FOLD seq            {$$ = fold($1, $3); }
+| seq seq   %prec CONCAT      {$$ = concat($1, $2); }
+| seq COLON NAME              {$$ = $1; T[(*$3)[0]] = $1;}
+| seq POP                     {$$ = rev($1); }
+| ATOM                        {$$ = $1; }
+| NAME                        {/*if(T.find(string((*$1)[0])) == T.end()) {
+                              cout << "Error! Uninitialized variable: " << $1 << endl;
+                              exit(1); }
+                              ; */$$ = T[(*$1)[0]]; }
+| LB seq RB                   { $$ = $2; }
+
+%%
+
+int main()
+{ 
+  while(true)
+  {
+    int res = yyparse();
+    if (done) { break; } // "done" is a global, set when we parse EOF
+  }
+}
+

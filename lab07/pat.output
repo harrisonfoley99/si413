@@ -1,0 +1,209 @@
+Grammar
+
+    0 $accept: S $end
+
+    1 S: seq STOP
+    2  | %empty
+
+    3 seq: seq FOLD seq
+    4    | seq seq
+    5    | seq COLON NAME
+    6    | seq POP
+    7    | ATOM
+    8    | NAME
+    9    | LB seq RB
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+error (256)
+LB (258) 9
+RB (259) 9
+STOP (260) 1
+ATOM (261) 7
+FOLD (262) 3
+CONCAT (263)
+NAME (264) 5 8
+POP (265) 6
+COLON (266) 5
+
+
+Nonterminals, with rules where they appear
+
+$accept (12)
+    on left: 0
+S (13)
+    on left: 1 2, on right: 0
+seq (14)
+    on left: 3 4 5 6 7 8 9, on right: 1 3 4 5 6 9
+
+
+State 0
+
+    0 $accept: . S $end
+
+    LB    shift, and go to state 1
+    ATOM  shift, and go to state 2
+    NAME  shift, and go to state 3
+
+    $default  reduce using rule 2 (S)
+
+    S    go to state 4
+    seq  go to state 5
+
+
+State 1
+
+    9 seq: LB . seq RB
+
+    LB    shift, and go to state 1
+    ATOM  shift, and go to state 2
+    NAME  shift, and go to state 3
+
+    seq  go to state 6
+
+
+State 2
+
+    7 seq: ATOM .
+
+    $default  reduce using rule 7 (seq)
+
+
+State 3
+
+    8 seq: NAME .
+
+    $default  reduce using rule 8 (seq)
+
+
+State 4
+
+    0 $accept: S . $end
+
+    $end  shift, and go to state 7
+
+
+State 5
+
+    1 S: seq . STOP
+    3 seq: seq . FOLD seq
+    4    | seq . seq
+    5    | seq . COLON NAME
+    6    | seq . POP
+
+    LB     shift, and go to state 1
+    STOP   shift, and go to state 8
+    ATOM   shift, and go to state 2
+    FOLD   shift, and go to state 9
+    NAME   shift, and go to state 3
+    POP    shift, and go to state 10
+    COLON  shift, and go to state 11
+
+    seq  go to state 12
+
+
+State 6
+
+    3 seq: seq . FOLD seq
+    4    | seq . seq
+    5    | seq . COLON NAME
+    6    | seq . POP
+    9    | LB seq . RB
+
+    LB     shift, and go to state 1
+    RB     shift, and go to state 13
+    ATOM   shift, and go to state 2
+    FOLD   shift, and go to state 9
+    NAME   shift, and go to state 3
+    POP    shift, and go to state 10
+    COLON  shift, and go to state 11
+
+    seq  go to state 12
+
+
+State 7
+
+    0 $accept: S $end .
+
+    $default  accept
+
+
+State 8
+
+    1 S: seq STOP .
+
+    $default  reduce using rule 1 (S)
+
+
+State 9
+
+    3 seq: seq FOLD . seq
+
+    LB    shift, and go to state 1
+    ATOM  shift, and go to state 2
+    NAME  shift, and go to state 3
+
+    seq  go to state 14
+
+
+State 10
+
+    6 seq: seq POP .
+
+    $default  reduce using rule 6 (seq)
+
+
+State 11
+
+    5 seq: seq COLON . NAME
+
+    NAME  shift, and go to state 15
+
+
+State 12
+
+    3 seq: seq . FOLD seq
+    4    | seq . seq
+    4    | seq seq .
+    5    | seq . COLON NAME
+    6    | seq . POP
+
+    POP    shift, and go to state 10
+    COLON  shift, and go to state 11
+
+    $default  reduce using rule 4 (seq)
+
+    seq  go to state 12
+
+
+State 13
+
+    9 seq: LB seq RB .
+
+    $default  reduce using rule 9 (seq)
+
+
+State 14
+
+    3 seq: seq . FOLD seq
+    3    | seq FOLD seq .
+    4    | seq . seq
+    5    | seq . COLON NAME
+    6    | seq . POP
+
+    NAME   shift, and go to state 3
+    POP    shift, and go to state 10
+    COLON  shift, and go to state 11
+
+    $default  reduce using rule 3 (seq)
+
+    seq  go to state 12
+
+
+State 15
+
+    5 seq: seq COLON NAME .
+
+    $default  reduce using rule 5 (seq)

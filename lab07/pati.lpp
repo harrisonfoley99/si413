@@ -1,0 +1,23 @@
+/*** This is file: pat.l ***/
+%{
+#include "pati.tab.hpp"
+#include "pat.h"
+%}
+
+%option noyywrap
+
+%%
+[a-z][a-zA-Z0-9\^]*    { yylval = new vector<string>();
+                          (*yylval).push_back(yytext);   return ATOM; }
+"*"                    {   return FOLD; }
+";"                    {   return STOP; }
+":"                    {   return COLON; }
+[A-Z][a-zA-Z0-9\^]*    { yylval = new vector<string>(); 
+                          (*yylval).push_back(yytext);   return NAME; }
+"_r"                   {   return POP; }
+"["                    {   return LB; }
+"]"                    {   return RB; }
+<<EOF>>                {   return 0; }
+[ \t\n]+ { }
+.        { cerr << "Unrecognized token!" << endl; exit(1); }
+%%

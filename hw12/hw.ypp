@@ -1,0 +1,30 @@
+/********************************************************
+ * 
+ ********************************************************/
+%{
+
+%}
+
+%union {
+  int val; 
+  char sym;
+};
+%token <val> OR AND NOT LP RP VAR STOP
+%type  <val> res D C L
+
+//-- GRAMMAR RULES ---------------------------------------
+%%
+res: D STOP
+
+D : D OR C
+| C
+
+C : C AND L
+| L
+
+L : VAR
+| NOT VAR
+| LP D RP
+
+%%
+//-- FUNCTION DEFINITIONS ---------------------------------

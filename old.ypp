@@ -1,0 +1,52 @@
+%{
+#include <unistd.h>
+#include "pat.h"
+#include "sym.h"
+
+int yyerror(const char *p) { cerr << "Parse error!" << endl; }
+bool done = false;
+%}
+
+%error-verbose
+%token ATOM FOLD STOP COLON NAME POP LB RB;
+
+%%
+
+S: seq STOP {  YYACCEPT; }
+| { done = true; }
+
+seq:  seq FOLD cseq    {$$ = NonTerm::next("seq",$1,$2,$3); }
+| cseq                 {$$ = NonTerm::next("seq",$1); }
+
+cseq: cseq pseq        {$$ = NonTerm::next("cseq",$1,$2); }
+| pseq                 {$$ = NonTerm::next("cseq",$1); }
+
+pseq: pseq COLON NAME  {$$ = NonTerm::next("pseq",$1,$2,$3); }
+| pseq POP             {$$ = NonTerm::next("pseq",$1,$2); }
+| aseq                 {$$ = NonTerm::next("pseq",$1); }
+
+aseq: ATOM             {$$ = NonTerm::next("aseq",$1); }
+| NAME                 {$$ = NonTerm::next("aseq",$1); }
+| LB seq RB            {$$ = NonTerm::next("aseq",$1,$2,$3); }
+
+%%
+
+int main()
+{ 
+  bool tty = isatty(0) && isatty(1); // checks if output is to terminal
+  while(true)
+  {
+    int res = yyparse();
+    if (done) { symClear(); break; } // "done" is a global, set when we parse EOF
+    if (res != 0) { symClear(); continue; }
+    if (tty) {
+      ofstream fout("tmp.txt");
+      dotGraph(fout);
+      system("dot -Tps tmp.txt -o tmp.ps");
+      system("evince tmp.ps&");
+    }
+    else
+      textGraph(cout);
+    symClear();
+  }
+}

@@ -1,0 +1,22 @@
+/*** This is file: pat.l ***/
+%{
+#include "pat.tab.hpp"
+#include "sym.h"
+
+%}
+
+%option noyywrap
+
+%%
+[a-z][a-zA-Z0-9\^]*    { yylval = Token::next(yytext,ATOM); return ATOM; }
+"*"                    { yylval = Token::next(yytext,FOLD); return FOLD; }
+";"                    { yylval = Token::next(yytext,STOP); return STOP; }
+":"                    { yylval = Token::next(yytext,COLON); return COLON; }
+[A-Z][a-zA-Z0-9\^]*    { yylval = Token::next(yytext,NAME); return NAME; }
+"_r"                   { yylval = Token::next(yytext,POP); return POP; }
+"["                    { yylval = Token::next(yytext,LB); return LB; }
+"]"                    { yylval = Token::next(yytext,RB); return RB; }
+<<EOF>>                { return 0; }
+[ \t\n]+ { }
+.        { cerr << "Unrecognized token!" << endl; exit(1); }
+%%
