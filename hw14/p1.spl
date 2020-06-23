@@ -1,0 +1,12 @@
+#Foley 211926
+# write a program that reads a number from the user
+# and writes "true" if the number is >= 0 and "false"
+# otherwise.
+# Note1:  you can assign boolean literals true and false
+#         to variables, e.g. new x := true;
+# Note2:  in our early SPL labs, "write true;" will produce "1"
+#         not "true" (and false "0").  It won't be until we add
+#         "dynamic type checking" that this feature will work
+#         properly in your interpreters.  It does work properly
+#         in the online interpreter though.  
+ifelse read >= 0 {write true;} {write false;}

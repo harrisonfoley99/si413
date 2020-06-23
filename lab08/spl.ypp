@@ -1,0 +1,166 @@
+/* SI 413 Summer 2020
+ * Lab 7
+ * Parser for SPL that just shows the parse tree
+ * This parser uses a simpler grammar with assoc/prec specifications.
+ * Foley 211926 
+ */
+
+// This code is included in the spl.tab.hpp header file
+%code requires {
+
+#include <cstdlib>
+#include <iostream>
+using namespace std;
+
+#include "ast.hpp"
+#include "readlineistream.hpp"
+
+int yylex();
+int yylex_destroy();
+
+} // end header file part
+
+// This code is only included in the parser file spl.tab.cpp
+%code {
+
+// These are the colored output streams to make things all pretty.
+colorout resout(1, 'u');
+colorout errout(2, 'r');
+
+// Global variable will be set to the entire AST.
+Stmt* tree;
+
+// Global variable to indicate if an error has occurred.
+bool error;
+
+// This is the C++ istream that flex reads from for scanning.
+extern std::istream *lexer_istream;
+
+void yyerror(const char *p) {
+  if (! error) {
+    errout << "Parser error: " << p << endl;
+    error = true;
+  }
+}
+
+} // end top of parser part
+
+  /* Tell bison to give descriptive error mesages. */
+%error-verbose
+
+%union {
+  Block* block;
+  Stmt* stmt;
+  Exp* exp;
+  Id* id;
+  Oper op;
+};
+
+%left<op> BOP
+%right<op> NOTTOK
+%left<op> COMP
+%left<op> OPA
+%left<op> OPM
+%right POSNEG
+%left FUNARG
+
+%token LC RC LP RP LAMBDA IF IFELSE WHILE READ WRITE NEW ASN STOP
+%token<id> ID
+%token<exp> NUM BOOL
+%type<stmt> stmt stmtlist
+%type<block> block
+%type<exp> exp
+
+%destructor { delete $$; } <block>
+%destructor { delete $$; } <stmt>
+%destructor { delete $$; } <exp>
+%destructor { delete $$; } <id>
+
+%%
+  /*Note: YYACCEPT is a bison macro that just tells it to quit parsing.*/
+res: stmt { tree = $1; YYACCEPT; }
+|         { tree = nullptr; }
+
+block: LC stmtlist RC { $$ = new Block($2); }
+
+stmtlist: stmtlist stmt { $$ = Stmt::append($1,$2); }
+|                       { $$ = new NullStmt; }
+
+stmt: NEW ID ASN exp STOP    {$$ = new NewStmt($2,$4);}
+|     ID ASN exp STOP        {$$ = new Asn($1,$3);}
+|     WRITE exp STOP         {$$ = new Write($2);}
+|     IF exp block           {$$ = new IfStmt($2,$3,new NullStmt());}
+|     IFELSE exp block block {$$ = new IfStmt($2,$3,$4);}
+|     WHILE exp block        {$$ = new WhileStmt($2,$3);}
+|     block                  {$$ = $1;}
+
+exp: exp BOP exp          {$$ = new BoolOp($1,$2,$3);}
+|    NOTTOK exp           {$$ = new NotOp($2);}
+|    exp COMP exp         {$$ = new CompOp($1,$2,$3);}
+|    exp OPA exp          {$$ = new ArithOp($1,$2,$3);}
+|    exp OPM exp          {$$ = new ArithOp($1,$2,$3);}
+|    OPA exp %prec POSNEG {$$ = ($1 == ADD ? $2 : new NegOp($2));}
+|    READ                 {$$ = new Read();}
+|    LAMBDA ID block      {$$ = new Lambda($2,$3);}
+|    exp FUNARG exp       {$$ = new Funcall($1,$3);}
+|    LP exp RP            {$$ = $2;}
+|    ID                   {$$ = $1;}
+|    NUM                  {$$ = $1;}
+|    BOOL                 {$$ = $1;}
+
+%%
+
+int main(int argc, char** argv) {
+  /*** Set up input and output sources ***/
+  bool showAST = false; // set to false to stop the AST from popping up.
+  int exitcode = 0;
+  bool showPrompt = isatty(0);
+  bool interactive = showPrompt && isatty(1);  
+  if (argc >= 2) {
+    lexer_istream = new ifstream(argv[1]);
+    if (!*lexer_istream) {
+      cerr << "Could not open input file \"" << argv[1] << "\"!" << endl;
+      exit(2);
+    }
+    interactive = false;
+  }
+  else if (interactive) {
+    readlineIstream* p = new readlineIstream(0);
+    p->setPrompt("spl> ");    
+    lexer_istream = p; 
+  }
+  else
+    lexer_istream = &cin;
+
+  /*** Loop over each complete parsable top-level statement **/
+  vector<AST*> results;
+  while(true) {
+    tree = nullptr;
+    error = false;
+    int pres = yyparse();
+    if (interactive) {
+      if (tree == nullptr && !error) { cout << "Goodbye" << endl; break; }
+      if (showAST && tree != nullptr) {
+	tree->writeDot("spl.dot");
+	if (system("dot -Tpdf spl.dot -ospl.pdf") != 0 ||
+	    system("evince spl.pdf >/dev/null 2>&1 &") != 0)
+	  cerr << "Error producing/displaying parse tree!" << endl;
+      }
+    }
+    else { /* NON-INTERACTIVE */
+      if (pres != 0 || error || tree == nullptr) break;
+    }
+    tree->exec();
+    results.push_back(tree);
+    tree = nullptr;
+  }    
+
+  /*** Clean up and exit! ***/
+  if (error) exitcode = 5;
+  if (tree) delete tree;
+  yylex_destroy();
+  if (lexer_istream != &cin) delete lexer_istream;
+  for(int i = 0; i < results.size(); ++i)
+    delete results[i];
+  return exitcode;
+}

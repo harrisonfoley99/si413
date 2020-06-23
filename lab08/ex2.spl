@@ -1,0 +1,3 @@
+
+#converting hours to seconds
+write 60*60*read;

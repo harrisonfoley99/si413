@@ -1,0 +1,13 @@
+digraph AST {
+	n1 [label="Stmt:Write"];
+	n2 [label="Exp:ArithOp:+"];
+	n3 [label="Exp:NegOp"];
+	n4 [label="Exp:Num:5"];
+	n3 -> n4;
+	n2 -> n3;
+	n5 [label="Exp:Num:3"];
+	n2 -> n5;
+	n1 -> n2;
+	n6 [label="Stmt:Null"];
+	n1 -> n6;
+}

@@ -1,0 +1,13 @@
+#Foley 211926
+
+new x := read;
+if x < 0 {
+    x := -x;
+}
+new res := 0; 
+while x != 0 {
+   res := res + (x*x*x);
+   x := read;
+   if x < 0 {x := -x;}
+}
+write res;
