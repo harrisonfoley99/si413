@@ -5,7 +5,7 @@ SHELL:=/bin/bash
 PROGS=spl
 IMPLS=ast.cpp value.cpp
 HEADERS=value.hpp colorout.hpp readlineistream.hpp $(IMPLS:.cpp=.hpp)
-CPPFLAGS=-std=c++11 -Wall -Wextra -Wno-sign-compare -ggdb -fmax-errors=3 -O2
+CPPFLAGS=-std=c++11 -Wall -Wextra -Wno-sign-compare -ggdb -fmax-errors=3 -O2 -Wno-unused-parameter
 
 # Default target
 all: $(PROGS)

@@ -40,6 +40,7 @@ class AST;
     class NewStmt;
     class Asn;
     class Write;
+    class Debug;
   class Exp;
     class Id;
     class Num;
@@ -98,7 +99,7 @@ class Exp :public AST {
     /* This is the method that must be overridden by all subclasses.
      * It should perform the computation specified by this node, and
      * return the resulting value that gets computed. */
-    virtual Value eval() {
+    virtual Value eval(Frame* env) {
       if (!error) {
         errout << "eval() not yet implemented for "
                << nodeLabel << " nodes!" << endl;
@@ -123,7 +124,7 @@ class Id :public Exp {
     // Returns a reference to the stored string value.
     string& getVal() { return val; }
 
-    Value eval() override; 
+    Value eval(Frame* env) override; 
 };
 
 /* A literal number in the program. */
@@ -141,7 +142,7 @@ class Num :public Exp {
     }
 
     // To evaluate, just return the number!
-    Value eval() override { return Value(val); }
+    Value eval(Frame* env) override { return Value(val); }
 };
 
 /* A literal boolean value like "true" or "false" */
@@ -156,7 +157,7 @@ class BoolExp :public Exp {
       if (v) nodeLabel += "true";
       else nodeLabel += "false";
     }
-    Value eval() override { return Value(val); }
+    Value eval(Frame* env) override { return Value(val); }
 };
 
 /* A binary opration for arithmetic, like + or *. */
@@ -174,7 +175,7 @@ class ArithOp :public Exp {
       ASTchild(right);
     }
 
-    Value eval() override; // this is implemented in ast.cpp
+    Value eval(Frame* env) override; // this is implemented in ast.cpp
 };
 
 /* A binary operation for comparison, like < or !=. */
@@ -191,7 +192,7 @@ class CompOp :public Exp {
       ASTchild(left);
       ASTchild(right);
     }
-    Value eval() override;
+    Value eval(Frame* env) override;
 };
 
 /* A binary operation for boolean logic, like "and". */
@@ -208,7 +209,7 @@ class BoolOp :public Exp {
       ASTchild(left);
       ASTchild(right);
     }
-    Value eval() override;
+    Value eval(Frame* env) override;
 };
 
 /* This class represents a unary negation operation. */
@@ -222,7 +223,7 @@ class NegOp :public Exp {
       right = r;
       ASTchild(right);
     }
-    Value eval() override { return Value(-(right->eval().num())); }
+    Value eval(Frame* env) override { return Value(-(right->eval(env).num())); }
 };
 
 /* This class represents a unary "not" operation. */
@@ -236,14 +237,14 @@ class NotOp :public Exp {
       right = r;
       ASTchild(right);
     }
-    Value eval() override { return Value(!(right->eval().tf())); }
+    Value eval(Frame* env) override { return Value(!(right->eval(env).tf())); }
 };
 
 /* A read expression. */
 class Read :public Exp {
   public:
     Read() { nodeLabel = "Exp:Read"; }
-    Value eval() override;
+    Value eval(Frame* env) override;
 };
 
 /* A Stmt is anything that can be evaluated at the top level such
@@ -293,7 +294,7 @@ class Stmt :public AST {
     /* This is the command that must be implemented everywhere to
      * execute this Stmt - that is, do whatever it is that this statement
      * says to do. */
-    virtual void exec() {
+    virtual void exec(Frame* env) {
       if (!error) {
         errout << "exec() not yet implemented for "
                << nodeLabel << " nodes!" << endl;
@@ -310,7 +311,7 @@ class NullStmt :public Stmt {
     }
 
     // Nothing to execute!
-    void exec() override { }
+    void exec(Frame* env) override { }
 };
 
 /* This is a statement for a block of code, i.e., code enclosed
@@ -326,6 +327,12 @@ class Block :public Stmt {
       nodeLabel = "Stmt:Block";
       body = b;
       ASTchild(body);
+    }
+    void exec(Frame* env) override{
+      Frame* new_env = new Frame(env);
+      body->exec(new_env);
+      getNext()->exec(env);
+      return;      
     }
 };
 
@@ -346,6 +353,7 @@ class IfStmt :public Stmt {
       ASTchild(ifblock);
       ASTchild(elseblock);
     }
+    void exec(Frame* env) override;
 };
 
 /* Class for while statements. */
@@ -362,6 +370,7 @@ class WhileStmt :public Stmt {
       ASTchild(clause);
       ASTchild(body);
     }
+    void exec(Frame* env) override;
 };
 
 /* A "new" statement creates a new binding of the variable to the
@@ -379,7 +388,20 @@ class NewStmt :public Stmt {
       ASTchild(lhs);
       ASTchild(rhs);
     }
-    void exec() override;
+    void exec(Frame* env) override;
+};
+
+class Debug :public Stmt {
+  private:
+    string txt;
+  public:
+    Debug(string s){
+      txt = s.substr(1, s.length()-2);
+    }
+    void exec(Frame* env) override{
+      cout << txt << endl;
+      getNext()->exec(env);
+    }
 };
 
 /* An assignment statement. This represents a RE-binding in the symbol table. */
@@ -396,7 +418,7 @@ class Asn :public Stmt {
       ASTchild(lhs);
       ASTchild(rhs);
     }
-    void exec() override;
+    void exec(Frame* env) override;
 };
 
 /* A write statement. */
@@ -411,13 +433,13 @@ class Write :public Stmt {
       ASTchild(val);
     }
 
-    void exec() override {
-      Value res = val->eval();
+    void exec(Frame* env) override {
+      Value res = val->eval(env);
       if (!error) {
         res.writeTo(resout);
         resout << endl;
       }
-      getNext()->exec();
+      getNext()->exec(env);
     }
 };
 
@@ -443,6 +465,12 @@ class Lambda :public Exp {
     // the lambda sometime after it gets created.
     string& getVar() { return var->getVal(); }
     Stmt* getBody() { return body; }
+    Value eval(Frame* env) override{
+      Closure c;
+      c.lamPtr = this;
+      c.envPtr = env; 
+      return Value(c);
+    }
 };
 
 /* A function call consists of the function name, and the actual argument.
@@ -460,6 +488,14 @@ class Funcall :public Exp {
       ASTchild(funexp);
       ASTchild(arg);
     }
+    Value eval(Frame* env) override;
 };
+
+//Frame* findFrame(const string &name, Frame* env){
+//  while(env != nullptr){
+//    if((*env).count(name) == 0) env = env->getParent();
+//  }
+//  return env;
+//}
 
 #endif //AST_HPP

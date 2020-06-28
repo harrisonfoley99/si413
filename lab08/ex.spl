@@ -1,0 +1,6 @@
+new pow := lambda x
+{
+  new g := lambda y { ifelse y = 0 { ret := 1; } { ret := x*g@(y-1); } };
+  ret := g;
+};
+write pow@2@8;

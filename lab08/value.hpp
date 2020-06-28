@@ -10,12 +10,19 @@
 #include <iostream>
 #include <cstdlib>
 #include <map>
+#include <stack>
+
 using namespace std;
 
 // Forward declaration of the Lambda AST class so we can have
 // pointers to Lambda objects.
 class Lambda;
+class Frame;
 
+struct Closure {
+  Lambda* lamPtr;
+  Frame* envPtr;
+};
 // This gives the type of what's stored in the Value object.
 // NONE_T means nothing has been set yet.  The function tname
 // translates a type to a string with that type's name.
@@ -30,7 +37,7 @@ inline string tname(VType t)
 class Value {
 private:
   // The value is either an int, a bool, or a pointer to a Lambda.
-  union { int num; bool tf; Lambda* func; } val;
+  union { int num; bool tf; Closure func; } val;
   VType type;
 
 public:
@@ -44,7 +51,7 @@ public:
   explicit Value(bool b) { type = BOOL_T; val.tf = b; }
 
   /* set the type to FUN */
-  explicit Value(Lambda* ptr) { type = FUN_T; val.func = ptr; }
+  explicit Value(Closure ptr) { type = FUN_T; val.func = ptr; }
 
   VType getType() { return type; }
   void setType(VType t) { type = t; }
@@ -53,7 +60,7 @@ public:
 
   bool tf() { return val.tf; }
 
-  Lambda* func() { return val.func; }
+  Closure func() { return val.func; }
 
   /* Writes a representation of this Value object to the
    * named output stream, according to the stored type.
@@ -69,6 +76,14 @@ public:
 };
 
 // forward declaration of the global variable representing a symbol table.
-extern std::map<string,Value> symTab;
+//extern std::map<string,stack<Value>> symTab;
+class Frame : public map<string,Value>
+{
+private:
+  Frame* parent;
+public:
+  Frame(Frame* par) { parent = par; }
+  Frame* getParent() { return parent; }
+};
 
 #endif // VALUE_HPP

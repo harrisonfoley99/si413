@@ -67,7 +67,8 @@ void yyerror(const char *p) {
 %token LC RC LP RP LAMBDA IF IFELSE WHILE READ WRITE NEW ASN STOP
 %token<id> ID
 %token<exp> NUM BOOL
-%type<stmt> stmt stmtlist
+%token<stmt> DEBUG
+%type<stmt> stmt stmtlist 
 %type<block> block
 %type<exp> exp
 
@@ -93,6 +94,7 @@ stmt: NEW ID ASN exp STOP    {$$ = new NewStmt($2,$4);}
 |     IFELSE exp block block {$$ = new IfStmt($2,$3,$4);}
 |     WHILE exp block        {$$ = new WhileStmt($2,$3);}
 |     block                  {$$ = $1;}
+|     DEBUG                  {$$ = $1;}
 
 exp: exp BOP exp          {$$ = new BoolOp($1,$2,$3);}
 |    NOTTOK exp           {$$ = new NotOp($2);}
@@ -115,7 +117,8 @@ int main(int argc, char** argv) {
   bool showAST = false; // set to false to stop the AST from popping up.
   int exitcode = 0;
   bool showPrompt = isatty(0);
-  bool interactive = showPrompt && isatty(1);  
+  bool interactive = showPrompt && isatty(1); 
+  Frame* global_frame = new Frame(nullptr); 
   if (argc >= 2) {
     lexer_istream = new ifstream(argv[1]);
     if (!*lexer_istream) {
@@ -150,7 +153,7 @@ int main(int argc, char** argv) {
     else { /* NON-INTERACTIVE */
       if (pres != 0 || error || tree == nullptr) break;
     }
-    tree->exec();
+    tree->exec(global_frame);
     results.push_back(tree);
     tree = nullptr;
   }    
