@@ -26,7 +26,7 @@ struct Closure {
 // This gives the type of what's stored in the Value object.
 // NONE_T means nothing has been set yet.  The function tname
 // translates a type to a string with that type's name.
-enum VType { NUM_T, BOOL_T, FUN_T, NONE_T };
+enum VType { NUM_T = 0, BOOL_T, FUN_T, NONE_T };
 inline string tname(VType t)
 {
   static string name[4] = { "NUM", "BOOL", "FUN", "UNSET" };
