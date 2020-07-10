@@ -1,0 +1,11 @@
+digraph AST {
+	n1 [label="Stmt:Write"];
+	n2 [label="Exp:Funcall"];
+	n3 [label="Exp:Id:sqrt"];
+	n2 -> n3;
+	n4 [label="Exp:Num:5"];
+	n2 -> n4;
+	n1 -> n2;
+	n5 [label="Stmt:Null"];
+	n1 -> n5;
+}

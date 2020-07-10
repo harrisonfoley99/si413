@@ -1,8 +1,8 @@
 /* SI 413 Summer 2020
- * Lab 7
+ * Lab 11
  * Parser for SPL that just shows the parse tree
  * This parser uses a simpler grammar with assoc/prec specifications.
- * Foley 211926 
+ * DR BROWN
  */
 
 // This code is included in the spl.tab.hpp header file
@@ -26,7 +26,8 @@ int yylex_destroy();
 // These are the colored output streams to make things all pretty.
 colorout resout(1, 'u');
 colorout errout(2, 'r');
-
+int recerr(string msg) { errout << msg << endl; error = true; return 0; }
+ 
 // Global variable will be set to the entire AST.
 Stmt* tree;
 
@@ -68,7 +69,7 @@ void yyerror(const char *p) {
 %token<id> ID
 %token<exp> NUM BOOL
 %token<stmt> DEBUG
-%type<stmt> stmt stmtlist 
+%type<stmt> stmt stmtlist
 %type<block> block
 %type<exp> exp
 
@@ -117,8 +118,7 @@ int main(int argc, char** argv) {
   bool showAST = false; // set to false to stop the AST from popping up.
   int exitcode = 0;
   bool showPrompt = isatty(0);
-  bool interactive = showPrompt && isatty(1); 
-  Frame* global_frame = new Frame(nullptr); 
+  bool interactive = showPrompt && isatty(1);  
   if (argc >= 2) {
     lexer_istream = new ifstream(argv[1]);
     if (!*lexer_istream) {
@@ -135,69 +135,33 @@ int main(int argc, char** argv) {
   else
     lexer_istream = &cin;
 
-  /* BUILT IN FUNCTIONS */
-  Lambda* f_s = new Lambda(new Id("george"), new SqrtStmt());
-  Closure c_s;
-  c_s.envPtr = global_frame;
-  c_s.lamPtr = f_s;
-  (*global_frame)["sqrt"] = Value(c_s);
-
-  Lambda* f_r = new Lambda(new Id("george"), new RandStmt());
-  Closure c_r;
-  c_r.envPtr = global_frame;
-  c_r.lamPtr = f_r;
-  (*global_frame)["rand"] = Value(c_r);
-
-  Lambda* f_iN = new Lambda(new Id("george"), new IsNum());
-  Closure c_iN;
-  c_iN.envPtr = global_frame;
-  c_iN.lamPtr = f_iN;
-  (*global_frame)["isnum"] = Value(c_iN);
-
-  Lambda* f_iB = new Lambda(new Id("george"), new IsBool());
-  Closure c_iB;
-  c_iB.envPtr = global_frame;
-  c_iB.lamPtr = f_iB;
-  (*global_frame)["isbool"] = Value(c_iB);
-
-  Lambda* f_iF = new Lambda(new Id("george"), new IsFun());
-  Closure c_iF;
-  c_iF.envPtr = global_frame;
-  c_iF.lamPtr = f_iF;
-  (*global_frame)["isfun"] = Value(c_iF);
-
-  Lambda* f_nF = new Lambda(new Id("george"), new NumFrames());
-  Closure c_nF;
-  c_nF.envPtr = global_frame;
-  c_nF.lamPtr = f_nF;
-  (*global_frame)["numframes"] = Value(c_nF);
-
   /*** Loop over each complete parsable top-level statement **/
+  srand(time(0));
+  Frame* env = new Frame(nullptr);
   vector<AST*> results;
+  mkBuiltin(new Sqrt(),"sqrt",env,results);
+  mkBuiltin(new Rand(),"rand",env,results);
+  mkBuiltin(new IsType(NUM_T),"isnum",env,results);
+  mkBuiltin(new IsType(BOOL_T),"isbool",env,results);
+  mkBuiltin(new IsType(FUN_T),"isfun",env,results);
   while(true) {
     tree = nullptr;
     error = false;
     int pres = yyparse();
     if (interactive) {
       if (tree == nullptr && !error) { cout << "Goodbye" << endl; break; }
+      if (error) continue;
       if (showAST && tree != nullptr) {
-	      tree->writeDot("spl.dot");
-	      if (system("dot -Tpdf spl.dot -ospl.pdf") != 0 ||
-	      system("evince spl.pdf >/dev/null 2>&1 &") != 0)
-	        cerr << "Error producing/displaying parse tree!" << endl;
+	tree->writeDot("spl.dot");
+	if (system("dot -Tpdf spl.dot -ospl.pdf") != 0 ||
+	    system("evince spl.pdf >/dev/null 2>&1 &") != 0)
+	  cerr << "Error producing/displaying parse tree!" << endl;
       }
     }
     else { /* NON-INTERACTIVE */
       if (pres != 0 || error || tree == nullptr) break;
     }
-    //cout << "Executing tree" << endl;
-    tree->exec(global_frame);
-    //cout << "Marking Frames" << endl;
-    Frame::mark(global_frame);
-    //cout << "Marked Frames:" << endl;
-    //Frame::markedFrames();
-    //cout << "Sweeping frames" << endl;
-    Frame::sweep();
+    tree->exec(env);
     results.push_back(tree);
     tree = nullptr;
   }    
@@ -205,13 +169,8 @@ int main(int argc, char** argv) {
   /*** Clean up and exit! ***/
   if (error) exitcode = 5;
   if (tree) delete tree;
-  Frame::cleanup();
-  delete f_r;
-  delete f_s;
-  delete f_iN;
-  delete f_iB;
-  delete f_iF;
-  delete f_nF;
+  //delete env;
+  //Frame::cleanup();
   yylex_destroy();
   if (lexer_istream != &cin) delete lexer_istream;
   for(int i = 0; i < results.size(); ++i)

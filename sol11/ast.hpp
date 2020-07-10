@@ -1,7 +1,7 @@
 /* SI 413 Summer 2020
- * Lab 8
+ * Lab 11
  * This is a C++ header file for the AST class hierarchy.
- * Foley 211926 
+ * DR BROWN
  */
 
 #ifndef AST_HPP
@@ -41,7 +41,6 @@ class AST;
     class NewStmt;
     class Asn;
     class Write;
-    class Debug;
   class Exp;
     class Id;
     class Num;
@@ -102,7 +101,7 @@ class Exp :public AST {
      * return the resulting value that gets computed. */
     virtual Value eval(Frame* env) {
       if (!error) {
-        errout << "eval() not yet implemented for "
+        errout << "eval(env) not yet implemented for "
                << nodeLabel << " nodes!" << endl;
         error = true;
       }
@@ -125,7 +124,18 @@ class Id :public Exp {
     // Returns a reference to the stored string value.
     string& getVal() { return val; }
 
-    Value eval(Frame* env) override; 
+  Value eval(Frame* env) override {
+    Frame* fp = findFrame(val,env);
+    if (fp == nullptr) {
+      cerr << "ERROR: No binding for variable " << val << endl;
+      error = true;
+      return Value();
+    }
+    else {
+      return (*fp)[val];
+    }
+  }
+
 };
 
 /* A literal number in the program. */
@@ -158,7 +168,7 @@ class BoolExp :public Exp {
       if (v) nodeLabel += "true";
       else nodeLabel += "false";
     }
-    Value eval(Frame* env) override { return Value(val); }
+  Value eval(Frame* env) override { return Value(val); }
 };
 
 /* A binary opration for arithmetic, like + or *. */
@@ -193,7 +203,19 @@ class CompOp :public Exp {
       ASTchild(left);
       ASTchild(right);
     }
-    Value eval(Frame* env) override;
+  Value eval(Frame* env) override {
+    int l = left->eval(env).num();
+    int r = right->eval(env).num();
+    switch(op) {
+    case LT: return Value(l < r); break;
+    case GT: return Value(l > r); break;
+    case LE: return Value(l <= r); break;
+    case GE: return Value(l >= r); break;
+    case EQ: return Value(l == r); break;
+    case NE: return Value(l != r); break;
+    default: return Value();
+    }   
+  }
 };
 
 /* A binary operation for boolean logic, like "and". */
@@ -204,13 +226,20 @@ class BoolOp :public Exp {
     Exp* right;
 
   public:
-    BoolOp(Exp* l, Oper o, Exp* r) {
-      op = o; left = l; right = r;
-      nodeLabel = "Exp:BoolOp:" + oplab[op];
-      ASTchild(left);
-      ASTchild(right);
-    }
-    Value eval(Frame* env) override;
+  BoolOp(Exp* l, Oper o, Exp* r) {
+    op = o; left = l; right = r;
+    nodeLabel = "Exp:BoolOp:" + oplab[op];
+    ASTchild(left);
+    ASTchild(right);
+  }
+  Value eval(Frame* env) override {
+    bool l = left->eval(env).tf();
+    switch(op) {
+    case AND: return Value(l && right->eval(env).tf()); break;
+    case OR : return Value(l || right->eval(env).tf()); break;
+    default: return Value();
+    }   
+  }
 };
 
 /* This class represents a unary negation operation. */
@@ -224,11 +253,10 @@ class NegOp :public Exp {
       right = r;
       ASTchild(right);
     }
-    Value eval(Frame* env) override { 
-      int toBeNegated = right->eval(env).num();
-      if(error) return Value();
-      return Value(-(toBeNegated)); 
-    }
+  Value eval(Frame* env) override {
+    int r = right->eval(env).num();
+    return Value(-r);
+  }
 };
 
 /* This class represents a unary "not" operation. */
@@ -242,18 +270,22 @@ class NotOp :public Exp {
       right = r;
       ASTchild(right);
     }
-    Value eval(Frame* env) override { 
-      bool toBeNegated = right->eval(env).tf();
-      if(error) return Value();
-      return Value(!toBeNegated);
-    }
+  Value eval(Frame* env) override {
+    bool r = right->eval(env).tf();
+    return Value(!r);
+  }
 };
 
 /* A read expression. */
 class Read :public Exp {
   public:
     Read() { nodeLabel = "Exp:Read"; }
-    Value eval(Frame* env) override;
+  Value eval(Frame* env) override {
+    string s;
+    cout << "read> " << flush;
+    cin >> s;
+    return Value(atoi(s.c_str()));
+  }
 };
 
 /* A Stmt is anything that can be evaluated at the top level such
@@ -277,7 +309,7 @@ class Stmt :public AST {
     /* This static method is for building sequences of statements by the
      * parser. It takes two statements, and appends one at the end of the other.
      * The returned value is a pointer to the new statement representing
-     * the sequence.
+     * the sequence.  The terminating NullStmt for a is deleted in the process.
      */
     static Stmt* append(Stmt* a, Stmt* b);
 
@@ -305,7 +337,7 @@ class Stmt :public AST {
      * says to do. */
     virtual void exec(Frame* env) {
       if (!error) {
-        errout << "exec() not yet implemented for "
+        errout << "exec(env) not yet implemented for "
                << nodeLabel << " nodes!" << endl;
         error = true;
       }
@@ -323,81 +355,24 @@ class NullStmt :public Stmt {
     void exec(Frame* env) override { }
 };
 
-class SqrtStmt :public Stmt {
-  public:
-    void exec(Frame* env) override {
-      int v = (*env)["george"].num();
-      if(error) return;
-      (*env)["ret"] = Value(int(floor(sqrt(v))));
-    }
-};
-
-class RandStmt :public Stmt {
-  public:
-    void exec(Frame* env) override {
-      int v = (*env)["george"].num();
-      if(error) return;
-      (*env)["ret"] = Value(rand() % v);
-    }
-};
-
-class IsNum :public Stmt {
-  public:
-    void exec(Frame* env) override {
-      Value v = (*env)["george"];
-      bool val = true;
-      if(tname(v.getType()) != "NUM") val = false;
-      (*env)["ret"] = Value(val);
-    }
-};
-
-class IsBool :public Stmt {
-  public:
-    void exec(Frame* env) override {
-      Value v = (*env)["george"];
-      bool val = true;
-      if(tname(v.getType()) != "BOOL") val = false;
-      (*env)["ret"] = Value(val);
-    }
-};
-
-class IsFun :public Stmt {
-  public:
-    void exec(Frame* env) override {
-      Value v = (*env)["george"];
-      bool val = true;
-      if(tname(v.getType()) != "FUN") val = false;
-      (*env)["ret"] = Value(val);
-    }
-};
-
-class NumFrames :public Stmt {
-  public:
-    void exec(Frame* env) override {
-      (*env)["ret"] = Value(Frame::getNumFrames());
-    }
-};
-
 /* This is a statement for a block of code, i.e., code enclosed
  * in curly braces { and }.
  * Eventually, this is where scopes will begin and end.
  */
 class Block :public Stmt {
-  private:
-    Stmt* body;
-
-  public:
-    Block(Stmt* b) {
-      nodeLabel = "Stmt:Block";
-      body = b;
-      ASTchild(body);
-    }
-    void exec(Frame* env) override{
-      Frame* new_env = new Frame(env);
-      body->exec(new_env);
-      getNext()->exec(env);
-      return;      
-    }
+private:
+  Stmt* body;
+  
+public:
+  Block(Stmt* b) {
+    nodeLabel = "Stmt:Block";
+    body = b;
+    ASTchild(body);
+  }
+  void exec(Frame* env) override {
+    Frame* newenv = new Frame(env);
+    body->exec(newenv); getNext()->exec(env);
+  }
 };
 
 /* This class is for "if" AND "ifelse" statements. */
@@ -417,7 +392,13 @@ class IfStmt :public Stmt {
       ASTchild(ifblock);
       ASTchild(elseblock);
     }
-    void exec(Frame* env) override;
+  void exec(Frame* env) override {
+    if (clause->eval(env).tf())
+      ifblock->exec(env);
+    else
+      elseblock->exec(env);
+    getNext()->exec(env);
+  }
 };
 
 /* Class for while statements. */
@@ -434,7 +415,11 @@ class WhileStmt :public Stmt {
       ASTchild(clause);
       ASTchild(body);
     }
-    void exec(Frame* env) override;
+  void exec(Frame* env) override {
+    while (clause->eval(env).tf())
+      body->exec(env);
+    getNext()->exec(env);
+  }
 };
 
 /* A "new" statement creates a new binding of the variable to the
@@ -452,20 +437,19 @@ class NewStmt :public Stmt {
       ASTchild(lhs);
       ASTchild(rhs);
     }
-    void exec(Frame* env) override;
-};
-
-class Debug :public Stmt {
-  private:
-    string txt;
-  public:
-    Debug(string s){
-      txt = s.substr(1, s.length()-2);
+  void exec(Frame* env) override {
+    string &name = lhs->getVal();
+    Value initval = rhs->eval(env);
+    if (error) return;
+    if (env->count(name) > 0) {
+      cerr << "ERROR: Variable " << name << " already bound!" << endl;
+      error = true;
     }
-    void exec(Frame* env) override{
-      cout << txt << endl;
-      getNext()->exec(env);
+    else {
+      (*env)[name] = initval;
     }
+    getNext()->exec(env);
+  }
 };
 
 /* An assignment statement. This represents a RE-binding in the symbol table. */
@@ -482,7 +466,23 @@ class Asn :public Stmt {
       ASTchild(lhs);
       ASTchild(rhs);
     }
-    void exec(Frame* env) override;
+
+  void exec(Frame* env) override {
+    string &name = lhs->getVal();
+    Value newval = rhs->eval(env);
+    if (error) return;
+    Frame* fp = findFrame(name,env);
+    if (fp == nullptr) {
+      cerr << "ERROR: Can't rebind " << name
+    	   << "; not yet bound!" << endl;
+      error = true;
+    }
+    else {
+      (*fp)[name] = newval;
+    }
+    getNext()->exec(env);
+  }
+
 };
 
 /* A write statement. */
@@ -529,12 +529,7 @@ class Lambda :public Exp {
     // the lambda sometime after it gets created.
     string& getVar() { return var->getVal(); }
     Stmt* getBody() { return body; }
-    Value eval(Frame* env) override{
-      Closure c;
-      c.lamPtr = this;
-      c.envPtr = env; 
-      return Value(c);
-    }
+  Value eval(Frame* env) override { Closure c = {this,env}; return Value(c); }
 };
 
 /* A function call consists of the function name, and the actual argument.
@@ -552,14 +547,64 @@ class Funcall :public Exp {
       ASTchild(funexp);
       ASTchild(arg);
     }
-    Value eval(Frame* env) override;
+  Value eval(Frame* env) override {
+    Closure clo = funexp->eval(env).func();
+    Value av = arg->eval(env);
+    if (error) return Value(); 
+    string param = clo.lamPtr->getVar();
+    Frame* newenv = new Frame(clo.envPtr);
+    (*newenv)[param] = av;
+    (*newenv)["ret"] = Value(); // empty value to get overwritten
+    clo.lamPtr->getBody()->exec(newenv);
+    Value result = (*newenv)["ret"];
+    return result;
+  }
 };
 
-//Frame* findFrame(const string &name, Frame* env){
-//  while(env != nullptr){
-//    if((*env).count(name) == 0) env = env->getParent();
-//  }
-//  return env;
-//}
+class Debug :public Stmt {
+  private:
+  string msg;
+
+  public:
+  Debug(const string& msg) {
+     nodeLabel = "Stmt:Debug[" + msg + "]";
+    this->msg = msg;
+  }
+
+  void exec(Frame* env) override {
+    resout << msg << endl;
+    getNext()->exec(env);
+  }
+
+};
+
+void mkBuiltin(Stmt* p, const string& name, Frame* env, vector<AST*> &store);
+
+class Sqrt : public Stmt
+{
+public:
+  void exec(Frame* env) override {
+    (*env)["ret"] = Value(int(sqrt((*env)["x"].num())));
+  }
+};
+
+class Rand : public Stmt
+{
+public:
+  void exec(Frame* env) override {
+    int n = (*env)["x"].num();
+    (*env)["ret"] = Value(rand()%n);
+  }
+};
+
+class IsType : public Stmt
+{
+  int tst;
+public:
+  IsType(int tst) { this->tst = tst; }
+  void exec(Frame* env) override {
+    (*env)["ret"] = Value((*env)["x"].getType() == tst);
+  }
+};
 
 #endif //AST_HPP

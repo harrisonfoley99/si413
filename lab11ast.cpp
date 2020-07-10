@@ -8,30 +8,47 @@
 #include "ast.hpp"
 //Evaluates a boolean and/or operation
 Value BoolOp::eval(Frame* env) {
-  bool l = left->eval(env).tf();
-  bool r;
-
-  if(error) return Value();
-
-  switch(op) {
-    case AND: 
-      if(!l) return Value(false);
-      r = right->eval(env).tf();
-
-      if(error) return Value();
-
-      if(!r) return Value(false);
-      return Value(true);
-    case OR: 
-      if(l) return Value(true);
-      r = right->eval(env).tf();
-
-      if(error) return Value();
-
-      if(r) return Value(true);
-      return Value(false);
-    default:
-      errout << "Internal Error: Illegal boolean operator" << endl;
+  Value leftV = left->eval(env);
+  string leftT = tname(leftV.getType());
+  if(leftT != "BOOL"){
+    errout << "Type mismatch: expected BOOL, got " << leftT << endl;
+    error = true;
+  }
+  else{ 
+    bool l = leftV.tf(); 
+    bool r;
+    Value rightV;
+    string rightT;
+    
+    switch(op) {
+      case AND: 
+        if(!l) return Value(false);
+        rightV = right->eval(env);
+        rightT = tname(rightV.getType());
+        if(rightT == "BOOL"){
+          r = rightV.tf();
+          if(!r) return Value(false);
+          return Value(true);
+        }
+        errout << "Type mismatch: expected BOOL, got " << rightT << endl;
+        error = true;
+        return Value();
+      case OR: 
+        if(l) return Value(true);
+        rightV = right->eval(env);
+        rightT = tname(rightV.getType());
+        if(rightT == "BOOL"){
+          r = rightV.tf();
+          if(r) return Value(true);
+          return Value(false);
+        }
+        errout << "Type mismatch: expected BOOL, got " << rightT << endl;
+        error = true;
+        return Value();
+      default:
+        errout << "Internal Error: Illegal boolean operator" << endl;
+        error = true;
+    }
   }
   return Value();
 }
@@ -47,11 +64,22 @@ Frame* findFrame(const string &name, Frame* env){
 
 //Evaluates a comparison
 Value CompOp::eval(Frame* env) {
-  int l = left->eval(env).num();
-  int r = right->eval(env).num();
-  
+  Value leftV = left->eval(env);
+  Value rightV = right->eval(env);
+  string leftT = tname(leftV.getType());
+  string rightT = tname(rightV.getType());
+  if(leftT != "NUM"){
+    error = true;
+    errout << "Type mismatch: expected NUM, got " << leftT << endl;
+  }
+  else if(rightT != "NUM"){
+    error = true;
+    errout << "Type mismatch: expected NUM, got " << rightT << endl;
+  }
   if(error) return Value();
-
+  
+  int l = leftV.num();
+  int r = rightV.num();
   switch(op) {
     case LT: return Value(l < r);
     case GT: return Value(l > r);
@@ -68,7 +96,6 @@ Value CompOp::eval(Frame* env) {
 
 //Evaluates a read operation
 Value Read::eval(Frame* env) {
-  if(error) return Value();
   string in;
   cin >> in;
   const char *in2 = in.c_str();
@@ -89,11 +116,24 @@ Value Id::eval(Frame* env) {
 
 // Evaluates an arithmetic operation
 Value ArithOp::eval(Frame* env) {
-  int l = left->eval(env).num();
-  int r = right->eval(env).num();
-  
+  //int l = left->eval(env).num();
+  //int r = right->eval(env).num();
+  Value leftV = left->eval(env);
+  Value rightV = right->eval(env);
+  string leftT = tname(leftV.getType());
+  string rightT = tname(rightV.getType());
+  if(leftT != "NUM"){
+    error = true;
+    errout << "Type mismatch: expected NUM, got " << leftT << endl;
+  }
+  else if(rightT != "NUM"){
+    error = true;
+    errout << "Type mismatch: expected NUM, got " << rightT << endl;
+  }
   if(error) return Value();
-  
+
+  int l = leftV.num();
+  int r = rightV.num();
   switch(op) {
     case ADD: return Value(l + r);
     case SUB: return Value(l - r);
@@ -114,11 +154,19 @@ Value ArithOp::eval(Frame* env) {
 
 //Evaluates a function call
 Value Funcall::eval(Frame* env) {
-  Closure c = funexp->eval(env).func();
+
+  Value cV = funexp->eval(env);
+  string cT = tname(cV.getType());
+  
+  if(cT != "FUN"){
+    error = true;
+    errout << "Type mismatch: expected FUN, got " << cT << endl;
+    return Value();
+  }
+
+  Closure c = cV.func();
+
   Value argument = arg->eval(env);//Ryan Mcgannon showed me why this needed to be a Value, not an int
-  
-  if(error) return Value();
-  
   string arg_name = c.lamPtr->getVar();
   Frame* parenv = c.envPtr;
 
@@ -133,11 +181,9 @@ Value Funcall::eval(Frame* env) {
 
 //Executes a new assignment
 void NewStmt::exec(Frame* env) {
+  if(error) return;
   Value v = rhs->eval(env);
   string id = lhs->getVal();
-
-  if(error) return;
-
   if((*env).count(id) == 0){
     (*env)[id] = v;
     getNext()->exec(env);
@@ -150,11 +196,9 @@ void NewStmt::exec(Frame* env) {
 
 //Executes a re-assignment
 void Asn::exec(Frame* env) {
+  if(error) return;
   Value v = rhs->eval(env);
   string id = lhs->getVal();
-
-  if(error) return;
-
   Frame* defined_in = findFrame(id, env);
   if(defined_in != nullptr){
     (*defined_in)[id] = v;
@@ -168,10 +212,14 @@ void Asn::exec(Frame* env) {
 
 //Executes an if/ifelse statement
 void IfStmt::exec(Frame* env) {
-  bool res = clause->eval(env).tf();
-
-  if(error) return;
-
+  Value resV = clause->eval(env);
+  string resT = tname(resV.getType());
+  if(resT != "BOOL"){
+    error = true;
+    errout << "Type mismatch: expected BOOL, got " << resT << endl;
+    return;
+  }
+  bool res = resV.tf();
   if(res) ifblock->exec(env);
   else elseblock->exec(env);
   getNext()->exec(env);
@@ -180,9 +228,14 @@ void IfStmt::exec(Frame* env) {
 
 //Executes a while loop statement
 void WhileStmt::exec(Frame* env) {
-  for(bool cont = clause->eval(env).tf(); cont; cont = clause->eval(env).tf()){
-    if(error) return;
-
+  Value resV = clause->eval(env);
+  string resT = tname(resV.getType());
+  if(resT != "BOOL"){
+    error = true;
+    errout << "Type mismatch: expected BOOL, got " << resT << endl;
+    return;
+  }
+  while(cont){
     body->exec(env);
   }
   getNext()->exec(env);

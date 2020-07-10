@@ -1,0 +1,5 @@
+digraph G {
+1 [ label="seq" ];
+1 -> 0;
+0 [ label="aaa" ];
+}

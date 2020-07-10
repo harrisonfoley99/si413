@@ -1,7 +1,6 @@
 /* SI 413 Summer 2020
- * Lab 8
+ * Lab 11
  * Implementation file for the Value class.
- * Foley 211926
  */
 #include "value.hpp"
 
@@ -24,8 +23,11 @@ bool Value::operator==(const Value& other) {
   return false;
 }
 
-// This is the actual definition of the symbol table.
-//std::map<string,stack<Value>> symTab;
+// Returns pointer to first Frame containing reference to "name",
+// NULL if none found
+Frame* findFrame(const string &name, Frame* env)
+{
+  return env == nullptr || env->count(name) > 0 ? env : findFrame(name,env->getParent());
+}
 
 vector<Frame*> Frame::liveFrames;
-
