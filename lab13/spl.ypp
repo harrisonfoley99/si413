@@ -1,0 +1,92 @@
+/* SI 413 Fall 2018
+ * Lab 13
+ * This parser uses a simpler grammar with assoc/prec specifications.
+ * YOUR NAME HERE
+ */
+
+// This code is included in the spl.tab.hpp header file
+%code requires {
+#include "splc.hpp"
+#include "ast.hpp"
+
+int yylex();
+int yylex_destroy();
+
+} // end header file part
+
+// This code is only included in the parser file spl.tab.cpp
+%code {
+// This is the C++ istream that flex reads from for scanning.
+extern std::istream *lexer_istream;
+
+void yyerror(const char *p) {
+  errout << "Parser error: " << p << endl;
+}
+
+} // end top of parser part
+
+  /* Tell bison to give descriptive error mesages. */
+%error-verbose
+
+%union {
+  Block* block;
+  Stmt* stmt;
+  Exp* exp;
+  Id* id;
+  Oper op;
+};
+
+%left<op> BOP
+%right<op> NOTTOK
+%left<op> COMP
+%left<op> OPA
+%left<op> OPM
+%right POSNEG
+%left FUNARG
+
+%token LC RC LP RP LAMBDA IF IFELSE WHILE READ WRITE NEW ASN STOP
+%token<id> ID
+%token<exp> NUM BOOL
+%type<stmt> stmt stmtlist
+%type<block> block
+%type<exp> exp
+
+%destructor { delete $$; } <block>
+%destructor { delete $$; } <stmt>
+%destructor { delete $$; } <exp>
+%destructor { delete $$; } <id>
+
+%%
+  /*Note: YYACCEPT is a bison macro that just tells it to quit parsing.*/
+res: stmt { tree = $1; YYACCEPT; }
+|         { tree = nullptr; }
+
+block: LC stmtlist RC { $$ = new Block($2); }
+
+stmtlist: stmtlist stmt { $$ = Stmt::append($1,$2); }
+|                       { $$ = new NullStmt; }
+
+stmt: NEW ID ASN exp STOP    {$$ = new NewStmt($2,$4);}
+|     ID ASN exp STOP        {$$ = new Asn($1,$3);}
+|     WRITE exp STOP         {$$ = new Write($2);}
+|     IF exp block           {$$ = new IfStmt($2,$3,new NullStmt());}
+|     IFELSE exp block block {$$ = new IfStmt($2,$3,$4);}
+|     WHILE exp block        {$$ = new WhileStmt($2,$3);}
+|     exp STOP               {$$ = new ExpStmt($1);}
+|     block                  {$$ = $1;}
+
+exp: exp BOP exp          {$$ = new BoolOp($1,$2,$3);}
+|    NOTTOK exp           {$$ = new NotOp($2);}
+|    exp COMP exp         {$$ = new CompOp($1,$2,$3);}
+|    exp OPA exp          {$$ = new ArithOp($1,$2,$3);}
+|    exp OPM exp          {$$ = new ArithOp($1,$2,$3);}
+|    OPA exp %prec POSNEG {$$ = ($1 == ADD ? $2 : new NegOp($2));}
+|    READ                 {$$ = new Read();}
+|    LAMBDA ID block      {$$ = new Lambda($2,$3);}
+|    exp FUNARG exp       {$$ = new Funcall($1,$3);}
+|    LP exp RP            {$$ = $2;}
+|    ID                   {$$ = $1;}
+|    NUM                  {$$ = $1;}
+|    BOOL                 {$$ = $1;}
+
+%%
