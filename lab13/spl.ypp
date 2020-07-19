@@ -1,7 +1,7 @@
 /* SI 413 Fall 2018
  * Lab 13
  * This parser uses a simpler grammar with assoc/prec specifications.
- * YOUR NAME HERE
+ * Harrison Foley
  */
 
 // This code is included in the spl.tab.hpp header file
@@ -47,6 +47,7 @@ void yyerror(const char *p) {
 %token LC RC LP RP LAMBDA IF IFELSE WHILE READ WRITE NEW ASN STOP
 %token<id> ID
 %token<exp> NUM BOOL
+%token<stmt> DEBUG
 %type<stmt> stmt stmtlist
 %type<block> block
 %type<exp> exp
@@ -74,6 +75,7 @@ stmt: NEW ID ASN exp STOP    {$$ = new NewStmt($2,$4);}
 |     WHILE exp block        {$$ = new WhileStmt($2,$3);}
 |     exp STOP               {$$ = new ExpStmt($1);}
 |     block                  {$$ = $1;}
+|     DEBUG                  {$$ = $1;}
 
 exp: exp BOP exp          {$$ = new BoolOp($1,$2,$3);}
 |    NOTTOK exp           {$$ = new NotOp($2);}

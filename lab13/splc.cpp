@@ -1,7 +1,7 @@
 /* SI413 Fall 2018
  * Lab 13
  * Main function to run the compiler
- * YOUR NAME HERE
+ * Harrison Foley, 211926
  */
 
 #include <fstream>
@@ -15,6 +15,11 @@
 colorout resout(1, 'u');
 colorout errout(2, 'r');
 stringstream delayout;
+
+//Use of another string stream discussed with Byron Gallager (no code was exchanged)
+stringstream global_declarations;
+stringstream main_stream;
+
 Stmt* tree = nullptr;
 extern std::istream *lexer_istream;
 
@@ -55,17 +60,21 @@ int main(int argc, char** argv) {
     lexer_istream = &cin;
 
   // LLVM header stuff
-  resout << "target triple = \"x86_64-pc-linux-gnu\"" << endl
+  global_declarations << "target triple = \"x86_64-pc-linux-gnu\"" << endl
+         << "@pfmt0 = constant [6 x i8] c\"spl> \\00\"" << endl
          << "@pfmt = constant [5 x i8] c\"%ld\\0A\\00\"" << endl
-         << "declare i32 @printf(i8*,...)" << endl;
+         << "declare i32 @printf(i8*,...)" << endl
+         << "declare i32 @scanf(i8*,...)" << endl;
 
   // this is the global context, used to keep track of any contextual
   // information you need as you traverse the AST. (For example the
   // counter to get the next register/llvm-variable name.
   Context gcon;
+  map<string,string> global_scope;
+  gcon.scopeStack.push_back(global_scope);
 
   // start LLVM main
-  resout << "define i32 @main() {" << endl;
+  main_stream << "define i32 @main() {" << endl;
 
   // loop to read in program statements, one at a time
   tree = nullptr;
@@ -81,15 +90,17 @@ int main(int argc, char** argv) {
 
     if (tree) {
       program.push_back(tree);
-      tree->exec(resout,&gcon);
+      tree->exec(main_stream,&gcon);
     }
   }
 
   // end LLVM main
-  resout << "    ret i32 0" << endl
+  main_stream << "    ret i32 0" << endl
          << "}" << endl;
 
-  // write anything in the delayed output stream
+  // write all accumulated streams in order
+  resout << global_declarations.str();
+  resout << main_stream.str();
   resout << delayout.str();
   
   // cleanup

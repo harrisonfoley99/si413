@@ -78,7 +78,8 @@ int yylex_destroy();
     STOP = 277,
     ID = 278,
     NUM = 279,
-    BOOL = 280
+    BOOL = 280,
+    DEBUG = 281
   };
 #endif
 
@@ -95,7 +96,7 @@ union YYSTYPE
   Id* id;
   Oper op;
 
-#line 99 "spl.tab.hpp" /* yacc.c:1909  */
+#line 100 "spl.tab.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

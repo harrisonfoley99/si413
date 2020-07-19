@@ -1,7 +1,7 @@
 /* SI 413 Fall 2019
  * Lab 13
  * This is a C++ header file for the AST class hierarchy.
- * YOUR NAME HERE
+ * Harrison Foley
  */
 
 #ifndef AST_HPP
@@ -37,6 +37,7 @@ class WhileStmt;
 class NewStmt;
 class Asn;
 class Write;
+class Debug;
 class Exp;
 class Id;
 class Num;
@@ -119,6 +120,7 @@ public:
 
   // Returns a reference to the stored string value.
   string& getVal() { return val; }
+  string eval(ostream& out, Context* con) override;
 };
 
 /* A literal number in the program. */
@@ -153,6 +155,8 @@ public:
     if (v) nodeLabel += "true";
     else nodeLabel += "false";
   }
+   
+  string eval(ostream& out, Context* con) override;
 };
 
 /* A binary opration for arithmetic, like + or *. */
@@ -172,7 +176,6 @@ public:
 
   string eval(ostream& out, Context* con) override;
 };
-
 /* A binary operation for comparison, like < or !=. */
 class CompOp :public Exp {
 private:
@@ -187,6 +190,8 @@ public:
     ASTchild(left);
     ASTchild(right);
   }
+
+  string eval(ostream& out, Context* con) override;
 };
 
 /* A binary operation for boolean logic, like "and". */
@@ -203,6 +208,8 @@ public:
     ASTchild(left);
     ASTchild(right);
   }
+
+  string eval(ostream& out, Context* con) override;
 };
 
 /* This class represents a unary negation operation. */
@@ -216,6 +223,8 @@ public:
     right = r;
     ASTchild(right);
   }
+
+  string eval(ostream& out, Context* con) override;
 };
 
 /* This class represents a unary "not" operation. */
@@ -229,12 +238,15 @@ public:
     right = r;
     ASTchild(right);
   }
+  
+  string eval(ostream& out, Context* con) override;  
 };
 
 /* A read expression. */
 class Read :public Exp {
 public:
   Read() { nodeLabel = "Exp:Read"; }
+  string eval(ostream& out, Context* con) override;
 };
 
 /* A Stmt is anything that can be evaluated at the top level such
@@ -315,6 +327,13 @@ public:
     body = b;
     ASTchild(body);
   }
+  void exec(ostream& out, Context* con) override {
+    map<string,string> blockScope;
+    con->scopeStack.push_back(blockScope);
+    body->exec(out, con);
+    con->scopeStack.pop_back();
+    getNext() -> exec(out, con);
+  }
 };
 
 /* This class is for "if" AND "ifelse" statements. */
@@ -334,6 +353,7 @@ public:
     ASTchild(ifblock);
     ASTchild(elseblock);
   }
+  void exec(ostream& out, Context* con) override;
 };
 
 /* Class for while statements. */
@@ -350,6 +370,7 @@ public:
     ASTchild(clause);
     ASTchild(body);
   }
+  void exec(ostream& out, Context* con) override;
 };
 
 /* A "new" statement creates a new binding of the variable to the
@@ -367,6 +388,7 @@ public:
     ASTchild(lhs);
     ASTchild(rhs);
   }
+  void exec(ostream& out, Context* con) override;
 };
 
 /* An assignment statement. This represents a RE-binding in the symbol table. */
@@ -383,6 +405,7 @@ public:
     ASTchild(lhs);
     ASTchild(rhs);
   }
+  void exec(ostream& out, Context* con) override;
 };
 
 /* A single expression as a statement. */
@@ -394,6 +417,10 @@ class ExpStmt :public Stmt {
     ExpStmt(Exp* b) {
       body = b;
       ASTchild(body);
+    }
+    void exec(ostream& out, Context* con) override{
+      body->eval(out, con);
+      getNext()->exec(out, con);
     }
 };
 
@@ -412,12 +439,32 @@ public:
   void exec(ostream& out, Context* con) override; // implemented in ast.cpp
 };
 
+class Debug :public Stmt {
+  private:
+    string txt;
+    int len;
+  public:
+    Debug(string s){
+      txt = s.substr(1, s.length()-2);
+      len = txt.length() + 2;
+    }
+    void exec(ostream& out, Context* con) override{
+      string glob = con -> nextFunc();
+      global_declarations << glob << " = constant [" << len << " x i8] c\"" << txt << "\n\\00\"" << endl;
+      out << "    call i32(i8*,...) @printf("
+        << "i8* getelementptr([" << len << " x i8], ["<< len << " x i8]* " << glob << ", i32 0, i32 0), "
+        << "i64 " << 0 << ")" << endl;
+      getNext()->exec(out, con);
+    }
+};
+
+
 /* A lambda expression consists of a parameter name and a body. */
 class Lambda :public Exp {
 private:
   Id* var;
   Stmt* body;
-
+  //string paramReg;
 protected:
   void writeLabel(ostream& out) { out << "lambda:exp" << flush; }
 
@@ -434,6 +481,7 @@ public:
   // the lambda sometime after it gets created.
   string& getVar() { return var->getVal(); }
   Stmt* getBody() { return body; }
+  string eval(ostream& out, Context* con) override;
 };
 
 /* A function call consists of the function name, and the actual argument.
@@ -451,6 +499,7 @@ public:
     ASTchild(funexp);
     ASTchild(arg);
   }
+  string eval(ostream& out, Context* con) override;
 };
 
 #endif //AST_HPP

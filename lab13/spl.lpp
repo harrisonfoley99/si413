@@ -90,5 +90,7 @@ new        {return NEW;}
 [ \t\n]+ { }
 "#".*    { }
 .        { scanerror(); return -1; }
+\".[^"\n]*.\"    {yylval.stmt = new Debug(yytext); return DEBUG;}
+
 %%
 std::istream *lexer_istream = &cin;

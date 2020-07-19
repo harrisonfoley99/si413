@@ -1,2 +1,1 @@
-This is starter code for Lab 13, the double lab in which you will
-produce a compiler that compiles SPL code to LLVM IR.
+This is MIDN Harrison Foley's submission of Lab 13 with 1 extension: I implemented the debugging statements (Exercise 8)

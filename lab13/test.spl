@@ -1,0 +1,27 @@
+#write read;
+
+#new f := lambda x { ret := x*x; };
+#write f@11;
+#write 456;
+
+#new g := lambda y {
+#    new f := lambda x { ret := x*x; };
+#    ret := f@(y+1);
+#};		
+#write g@5;
+
+#new f := lambda x { ret := x*x; }; write f@(f@14);
+
+#new f := lambda x { write 42; }; f@0;
+
+#new f := lambda j { new s := 0; new i := 0; while i < j { i := i + 1; new j := i + s; s := j; } ret := s; }; 
+#write f@100;
+
+"Please enter a positive number."
+new x := read;
+ifelse x > 0
+  { "Thank you and good job." }
+  { "You will now be punished with 50 punches."
+    new i := 0;
+    while i < 50 { "punch" i := i + 1; }
+  }
